@@ -207,15 +207,17 @@ def render_cards(cards, section_title, section_class):
         return
     st.markdown(f'<div class="section-title {section_class}">{section_title}</div>', unsafe_allow_html=True)
     for i, rec in enumerate(cards, 1):
-        card_name = html.escape(rec.get("card_name", "알 수 없음"))
-        card_company = html.escape(rec.get("card_company", ""))
-        card_type = html.escape(rec.get("card_type", "신용"))
-        reason = html.escape(rec.get("reason", ""))
-        saving = html.escape(rec.get("monthly_saving", ""))
-        card_url = rec.get("card_url", "")
-        image_url = rec.get("image_url", "")
-        benefits = [html.escape(b) for b in rec.get("benefits_summary", [])]
-        badge_class = "badge-credit" if card_type == "신용" else "badge-check"
+        card_name = html.escape(str(rec.get("card_name") or "알 수 없음"))
+        card_company = html.escape(str(rec.get("card_company") or ""))
+        raw_card_type = str(rec.get("card_type") or "신용")
+        card_type = html.escape(raw_card_type)
+        reason = html.escape(str(rec.get("reason") or ""))
+        saving = html.escape(str(rec.get("monthly_saving") or ""))
+        card_url = str(rec.get("card_url") or "")
+        image_url = str(rec.get("image_url") or "")
+        raw_benefits = rec.get("benefits_summary") or []
+        benefits = [html.escape(str(b)) for b in raw_benefits if b]
+        badge_class = "badge-credit" if "신용" in raw_card_type else "badge-check"
         benefits_html = ""
         if benefits:
             items = "".join(f'<div class="benefit-item"><span class="benefit-bullet">▸</span>{b}</div>' for b in benefits)
@@ -226,26 +228,24 @@ def render_cards(cards, section_title, section_class):
         image_html = ""
         if image_url:
             image_html = f'<img src="{image_url}" alt="{card_name}" class="card-image">'
-        st.markdown(f"""
-        <div class="card-box">
-            <div class="card-number">#{i}</div>
-            <div class="card-header-row">
-                {image_html}
-                <div class="card-header-info">
-                    <div class="card-name">{card_name}
-                        <span class="card-type-badge {badge_class}">{card_type}</span>
-                    </div>
-                    <div class="card-company">{card_company}</div>
-                </div>
-            </div>
-            <div class="reason-label">추천 이유</div>
-            <div class="reason-text">{reason}</div>
-            <div class="reason-label">예상 월 절약 금액</div>
-            <div class="saving-badge">{saving if saving else "산정 불가"}</div>
-            {benefits_html}
-            <br>{link_html}
-        </div>
-        """, unsafe_allow_html=True)
+        card_html = (
+            f'<div class="card-box">'
+            f'<div class="card-number">#{i}</div>'
+            f'<div class="card-header-row">'
+            f'{image_html}'
+            f'<div class="card-header-info">'
+            f'<div class="card-name">{card_name} <span class="card-type-badge {badge_class}">{card_type}</span></div>'
+            f'<div class="card-company">{card_company}</div>'
+            f'</div></div>'
+            f'<div class="reason-label">추천 이유</div>'
+            f'<div class="reason-text">{reason}</div>'
+            f'<div class="reason-label">예상 월 절약 금액</div>'
+            f'<div class="saving-badge">{saving if saving else "산정 불가"}</div>'
+            f'{benefits_html}'
+            f'<br>{link_html}'
+            f'</div>'
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────

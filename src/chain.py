@@ -27,7 +27,7 @@ def _truncate_by_tokens(text: str, enc, max_tokens: int) -> str:
     return enc.decode(tokens[:max_tokens]) + "..."
 
 
-def format_docs(docs, max_docs: int = 10, max_tokens_per_doc: int = 3000) -> str:
+def format_docs(docs, max_docs: int = 15, max_tokens_per_doc: int = 3000) -> str:
     """Document 리스트를 프롬프트용 텍스트로 포맷팅 (토큰 제한 적용)
 
     검색은 benefits 기반이지만, LLM에는 metadata의 detail_description을 합쳐서 전달.
@@ -37,9 +37,9 @@ def format_docs(docs, max_docs: int = 10, max_tokens_per_doc: int = 3000) -> str
     enc = tiktoken.encoding_for_model(config.LLM_MODEL_NAME)
     result = []
     total_tokens = 0
-    for doc in docs[:max_docs]:
+    for i, doc in enumerate(docs[:max_docs], 1):
         detail = doc.metadata.get("detail_description", "")
-        full_text = doc.page_content
+        full_text = f"[카드 {i}]\n{doc.page_content}"
         if detail:
             full_text += f"\n상세설명: {detail}"
         # 카드당 토큰 제한 (page_content에 detail이 이미 포함된 경우도 방어)
@@ -147,15 +147,75 @@ def get_structured_recommendation(persona_text: str) -> dict:
         else:
             recommendations = []
 
-    # source_cards의 image_url, card_url, card_type을 recommendations에 병합
-    source_map = {c["card_name"]: c for c in source_cards}
+    # source_cards에서 카드명 매칭 (정확 → 부분 → 카드사+타입 매칭)
+    def _find_source(rec, source_cards, used_names):
+        rec_name = rec.get("card_name", "")
+        rec_company = rec.get("card_company", "")
+        rec_type = rec.get("card_type", "")
+        if not rec_name:
+            return {}
+        # 1단계: 정확 매칭
+        for sc in source_cards:
+            if sc["card_name"] == rec_name and sc["card_name"] not in used_names:
+                return sc
+        # 2단계: 부분 매칭
+        for sc in source_cards:
+            if sc["card_name"] not in used_names:
+                if rec_name in sc["card_name"] or sc["card_name"] in rec_name:
+                    return sc
+        # 3단계: 카드사 + 카드타입 매칭 (LLM이 일반적 이름을 쓴 경우)
+        if rec_company:
+            for sc in source_cards:
+                if sc["card_name"] not in used_names:
+                    sc_type = sc.get("card_type", "")
+                    if rec_company in sc.get("card_company", "") or sc.get("card_company", "") in rec_company:
+                        if ("체크" in rec_type) == ("체크" in sc_type):
+                            return sc
+        return {}
+
+    used_names = set()
     for rec in recommendations:
-        src = source_map.get(rec.get("card_name"), {})
-        rec["image_url"] = src.get("image_url", "")
-        rec["card_url"] = src.get("card_url", "")
-        # card_type이 LLM 응답에 없으면 source에서 가져오기
-        if not rec.get("card_type"):
-            rec["card_type"] = src.get("card_type", "신용")
+        src = _find_source(rec, source_cards, used_names)
+        if src:
+            used_names.add(src["card_name"])
+        if not rec.get("image_url"):
+            rec["image_url"] = src.get("image_url", "")
+        if not rec.get("card_url"):
+            rec["card_url"] = src.get("card_url", "")
+        # 매칭된 source가 있으면 카드명도 정확한 이름으로 교정
+        if src and src.get("card_name"):
+            rec["card_name"] = src["card_name"]
+        # card_type 정규화: "체크"가 포함되면 체크, 아니면 신용
+        ct = str(rec.get("card_type") or src.get("card_type") or "신용")
+        rec["card_type"] = "체크" if "체크" in ct else "신용"
+
+    # 매칭 안 된 카드는 같은 타입의 source 카드로 대체
+    for rec in recommendations:
+        if not rec.get("image_url"):
+            rec_type = rec.get("card_type", "신용")
+            for sc in source_cards:
+                if sc["card_name"] not in used_names:
+                    sc_type = sc.get("card_type", "")
+                    if ("체크" in rec_type) == ("체크" in sc_type):
+                        used_names.add(sc["card_name"])
+                        rec["card_name"] = sc["card_name"]
+                        rec["card_company"] = sc.get("card_company", "")
+                        rec["image_url"] = sc.get("image_url", "")
+                        rec["card_url"] = sc.get("card_url", "")
+                        break
+
+    # 신용 3장 / 체크 3장 보장: 부족하면 상대쪽에서 재분류
+    credit = [r for r in recommendations if r["card_type"] == "신용"]
+    check = [r for r in recommendations if r["card_type"] == "체크"]
+    while len(credit) > 3 and len(check) < 3:
+        moved = credit.pop()
+        moved["card_type"] = "체크"
+        check.append(moved)
+    while len(check) > 3 and len(credit) < 3:
+        moved = check.pop()
+        moved["card_type"] = "신용"
+        credit.append(moved)
+    recommendations = credit[:3] + check[:3]
 
     return {"recommendations": recommendations, "source_cards": source_cards}
 
