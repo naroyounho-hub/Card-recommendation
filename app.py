@@ -51,11 +51,28 @@ st.markdown("""
         padding: 0.4rem 1rem 0.4rem 0.8rem;
         border-radius: 16px 0 16px 0;
     }
+    .card-header-row {
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .card-image {
+        width: 90px;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        flex-shrink: 0;
+    }
+    .card-header-info {
+        flex: 1;
+    }
     .card-name {
         font-size: 1.4rem; font-weight: 700; color: #ffffff;
-        margin-top: 1.5rem; margin-bottom: 0.2rem;
+        margin-top: 0; margin-bottom: 0.2rem;
     }
-    .card-company { font-size: 0.9rem; color: #aaa; margin-bottom: 1rem; }
+    .card-company { font-size: 0.9rem; color: #aaa; margin-bottom: 0; }
     .reason-label {
         font-size: 0.8rem; font-weight: 600; color: #7b2ff7;
         text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.3rem;
@@ -195,6 +212,7 @@ def render_cards(cards, section_title, section_class):
         reason = rec.get("reason", "")
         saving = rec.get("monthly_saving", "")
         card_url = rec.get("card_url", "")
+        image_url = rec.get("image_url", "")
         benefits = rec.get("benefits_summary", [])
         badge_class = "badge-credit" if card_type == "신용" else "badge-check"
         benefits_html = ""
@@ -204,13 +222,21 @@ def render_cards(cards, section_title, section_class):
         link_html = ""
         if card_url:
             link_html = f'<a class="card-link" href="{card_url}" target="_blank">카드 상세 페이지 바로가기 &rarr;</a>'
+        image_html = ""
+        if image_url:
+            image_html = f'<img src="{image_url}" alt="{card_name}" class="card-image">'
         st.markdown(f"""
         <div class="card-box">
             <div class="card-number">#{i}</div>
-            <div class="card-name">{card_name}
-                <span class="card-type-badge {badge_class}">{card_type}</span>
+            <div class="card-header-row">
+                {image_html}
+                <div class="card-header-info">
+                    <div class="card-name">{card_name}
+                        <span class="card-type-badge {badge_class}">{card_type}</span>
+                    </div>
+                    <div class="card-company">{card_company}</div>
+                </div>
             </div>
-            <div class="card-company">{card_company}</div>
             <div class="reason-label">추천 이유</div>
             <div class="reason-text">{reason}</div>
             <div class="reason-label">예상 월 절약 금액</div>
