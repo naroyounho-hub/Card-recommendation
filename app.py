@@ -1,3 +1,4 @@
+import html
 import streamlit as st
 from src.chain import get_structured_recommendation, get_chat_stream
 
@@ -206,14 +207,14 @@ def render_cards(cards, section_title, section_class):
         return
     st.markdown(f'<div class="section-title {section_class}">{section_title}</div>', unsafe_allow_html=True)
     for i, rec in enumerate(cards, 1):
-        card_name = rec.get("card_name", "알 수 없음")
-        card_company = rec.get("card_company", "")
-        card_type = rec.get("card_type", "신용")
-        reason = rec.get("reason", "")
-        saving = rec.get("monthly_saving", "")
+        card_name = html.escape(rec.get("card_name", "알 수 없음"))
+        card_company = html.escape(rec.get("card_company", ""))
+        card_type = html.escape(rec.get("card_type", "신용"))
+        reason = html.escape(rec.get("reason", ""))
+        saving = html.escape(rec.get("monthly_saving", ""))
         card_url = rec.get("card_url", "")
         image_url = rec.get("image_url", "")
-        benefits = rec.get("benefits_summary", [])
+        benefits = [html.escape(b) for b in rec.get("benefits_summary", [])]
         badge_class = "badge-credit" if card_type == "신용" else "badge-check"
         benefits_html = ""
         if benefits:

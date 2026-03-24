@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(streamlit run:*)",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3:*)",
+      "Bash(grep -n \"html\\\\|escape\" app.py src/*.py)"
     ]
   }
 }
