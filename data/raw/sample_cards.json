@@ -1,0 +1,90 @@
+[
+  {
+    "card_name": "신한카드 Mr.Life",
+    "card_type": "신용",
+    "card_company": "신한카드",
+    "annual_fee": "국내전용 15,000원 / 해외겸용 18,000원",
+    "benefits": "대중교통 10% 할인, 편의점 5% 할인, 커피전문점 10% 할인, 영화관 4,000원 할인",
+    "benefit_categories": ["교통", "편의점", "카페", "문화"],
+    "detail_description": "신한카드 Mr.Life는 일상생활에서 자주 사용하는 대중교통, 편의점, 커피전문점, 영화관 등에서 폭넓은 할인 혜택을 제공하는 카드입니다. 버스·지하철 이용 시 10% 할인, CU·GS25·세븐일레븐 등 편의점 5% 할인, 스타벅스·투썸플레이스 등 커피전문점 10% 할인, CGV·메가박스 등 영화관 4,000원 할인이 적용됩니다. 전월 실적 30만원 이상 시 혜택이 제공되며, 월 할인 한도는 각 영역별 1만원입니다.",
+    "image_url": "https://example.com/cards/shinhan_mrlife.png",
+    "card_url": "https://www.card-gorilla.com/card/shinhan-mrlife"
+  },
+  {
+    "card_name": "삼성카드 taptap O",
+    "card_type": "신용",
+    "card_company": "삼성카드",
+    "annual_fee": "국내전용 12,000원 / 해외겸용 15,000원",
+    "benefits": "온라인쇼핑 2% 적립, 배달앱 2% 적립, OTT 구독료 5% 할인, 간편결제 1% 적립",
+    "benefit_categories": ["온라인쇼핑", "배달", "문화", "간편결제"],
+    "detail_description": "삼성카드 taptap O는 디지털 라이프에 최적화된 카드입니다. 쿠팡·네이버쇼핑·11번가 등 온라인쇼핑 2% 적립, 배달의민족·요기요 등 배달앱 2% 적립, 넷플릭스·유튜브 프리미엄·웨이브 등 OTT 구독료 5% 할인, 삼성페이·네이버페이 등 간편결제 1% 적립이 제공됩니다. 전월 실적 30만원 이상, 월 적립 한도 1만 포인트입니다.",
+    "image_url": "https://example.com/cards/samsung_taptapo.png",
+    "card_url": "https://www.card-gorilla.com/card/samsung-taptapo"
+  },
+  {
+    "card_name": "KB국민 노리2 체크카드",
+    "card_type": "체크",
+    "card_company": "KB국민카드",
+    "annual_fee": "없음",
+    "benefits": "대중교통 5% 적립, 편의점 5% 적립, 통신료 자동이체 2% 할인, 커피전문점 5% 적립",
+    "benefit_categories": ["교통", "편의점", "통신", "카페"],
+    "detail_description": "KB국민 노리2 체크카드는 연회비 없이 일상 혜택을 누릴 수 있는 체크카드입니다. 버스·지하철 대중교통 5% 적립, CU·GS25 등 편의점 5% 적립, SKT·KT·LGU+ 통신료 자동이체 2% 할인, 스타벅스·이디야 등 커피전문점 5% 적립이 제공됩니다. 전월 실적 조건 없이 기본 혜택이 적용되며, 월 적립 한도는 5,000원입니다.",
+    "image_url": "https://example.com/cards/kb_nori2.png",
+    "card_url": "https://www.card-gorilla.com/card/kb-nori2"
+  },
+  {
+    "card_name": "현대카드 M",
+    "card_type": "신용",
+    "card_company": "현대카드",
+    "annual_fee": "국내전용 15,000원 / 해외겸용 18,000원",
+    "benefits": "모든 가맹점 기본 1% M포인트 적립, 주유소 추가 1% 적립, 마트·백화점 추가 1% 적립",
+    "benefit_categories": ["주유", "마트", "쇼핑", "적립"],
+    "detail_description": "현대카드 M은 모든 가맹점에서 기본 1% M포인트를 적립해주는 범용 적립 카드입니다. SK·GS·현대오일뱅크 등 주유소에서 추가 1%(총 2%) 적립, 이마트·홈플러스·코스트코 등 대형마트와 백화점에서 추가 1%(총 2%) 적립이 제공됩니다. 전월 실적 30만원 이상 시 적용되며, M포인트는 현대카드 가맹점에서 현금처럼 사용 가능합니다.",
+    "image_url": "https://example.com/cards/hyundai_m.png",
+    "card_url": "https://www.card-gorilla.com/card/hyundai-m"
+  },
+  {
+    "card_name": "우리카드 카드의정석 POINT",
+    "card_type": "신용",
+    "card_company": "우리카드",
+    "annual_fee": "국내전용 10,000원",
+    "benefits": "음식점 3% 적립, 카페 3% 적립, 베이커리 3% 적립, 해외결제 2% 적립",
+    "benefit_categories": ["음식점", "카페", "베이커리", "해외"],
+    "detail_description": "우리카드 카드의정석 POINT는 먹거리 관련 소비가 많은 분들에게 최적화된 카드입니다. 일반음식점·패밀리레스토랑 등에서 3% 적립, 스타벅스·투썸·이디야 등 카페에서 3% 적립, 파리바게뜨·뚜레쥬르 등 베이커리에서 3% 적립, 해외 가맹점 결제 시 2% 적립이 제공됩니다. 전월 실적 30만원 이상, 월 적립 한도 1만 포인트입니다.",
+    "image_url": "https://example.com/cards/woori_point.png",
+    "card_url": "https://www.card-gorilla.com/card/woori-point"
+  },
+  {
+    "card_name": "롯데카드 LOCA 365",
+    "card_type": "신용",
+    "card_company": "롯데카드",
+    "annual_fee": "국내전용 15,000원 / 해외겸용 18,000원",
+    "benefits": "주유 리터당 60원 할인, 통신료 1만원 할인, 공과금 5천원 할인, 마트 5% 할인",
+    "benefit_categories": ["주유", "통신", "공과금", "마트"],
+    "detail_description": "롯데카드 LOCA 365는 고정 지출 절약에 특화된 카드입니다. SK·GS·현대오일뱅크 등 주유소에서 리터당 60원 할인, SKT·KT·LGU+ 통신료 월 1만원 할인, 전기·가스·수도 공과금 월 5천원 할인, 롯데마트·이마트·홈플러스 대형마트 5% 할인이 제공됩니다. 전월 실적 40만원 이상 시 혜택이 적용되며, 특히 자가용 통근자와 1인 가구에게 유리합니다.",
+    "image_url": "https://example.com/cards/lotte_loca365.png",
+    "card_url": "https://www.card-gorilla.com/card/lotte-loca365"
+  },
+  {
+    "card_name": "하나카드 트래블로그",
+    "card_type": "신용",
+    "card_company": "하나카드",
+    "annual_fee": "국내전용 15,000원 / 해외겸용 없음(해외전용)",
+    "benefits": "해외결제 수수료 면제, 해외 가맹점 3% 캐시백, 공항라운지 연 2회, 여행자보험 자동 가입",
+    "benefit_categories": ["해외", "여행", "항공"],
+    "detail_description": "하나카드 트래블로그는 해외여행에 최적화된 카드입니다. 해외 가맹점 결제 시 국제브랜드 수수료(약 1%)가 면제되며, 추가로 3% 캐시백이 적용됩니다. 인천공항·김포공항 라운지를 연 2회 무료 이용 가능하고, 해외여행자보험이 자동 가입됩니다. 전월 실적 30만원 이상 시 혜택이 적용됩니다. 해외 출장이 잦거나 여행을 자주 가는 분에게 추천합니다.",
+    "image_url": "https://example.com/cards/hana_travellog.png",
+    "card_url": "https://www.card-gorilla.com/card/hana-travellog"
+  },
+  {
+    "card_name": "NH농협 올원파이 체크카드",
+    "card_type": "체크",
+    "card_company": "NH농협카드",
+    "annual_fee": "없음",
+    "benefits": "간편결제 1.5% 적립, 교통 5% 적립, 학원·교육비 3% 적립, 병원·약국 3% 적립",
+    "benefit_categories": ["간편결제", "교통", "교육", "의료"],
+    "detail_description": "NH농협 올원파이 체크카드는 연회비 없이 다양한 생활 혜택을 제공하는 체크카드입니다. 네이버페이·카카오페이·삼성페이 등 간편결제 시 1.5% 적립, 버스·지하철·택시 등 교통 5% 적립, 학원비·인터넷강의 등 교육비 3% 적립, 병원 진료비·약국 3% 적립이 제공됩니다. 전월 실적 조건 없이 사용 가능하며, 월 적립 한도는 5,000원입니다."  ,
+    "image_url": "https://example.com/cards/nh_allonepay.png",
+    "card_url": "https://www.card-gorilla.com/card/nh-allonepay"
+  }
+]
