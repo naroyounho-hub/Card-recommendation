@@ -19,19 +19,39 @@ RECOMMEND_PROMPT = _build_prompt(config.RECOMMEND_PROMPT_TEMPLATE)
 STRUCTURED_PROMPT = _build_prompt(config.STRUCTURED_PROMPT_TEMPLATE)
 
 
-def format_docs(docs, max_docs: int = 10) -> str:
-    """Document 리스트를 프롬프트용 텍스트로 포맷팅 (토큰 제한 적용)"""
+def _truncate_by_tokens(text: str, enc, max_tokens: int) -> str:
+    """텍스트를 max_tokens 이하로 자르기"""
+    tokens = enc.encode(text)
+    if len(tokens) <= max_tokens:
+        return text
+    return enc.decode(tokens[:max_tokens]) + "..."
+
+
+def format_docs(docs, max_docs: int = 10, max_tokens_per_doc: int = 3000) -> str:
+    """Document 리스트를 프롬프트용 텍스트로 포맷팅 (토큰 제한 적용)
+
+    검색은 benefits 기반이지만, LLM에는 metadata의 detail_description을 합쳐서 전달.
+    카드당 전체 텍스트를 max_tokens_per_doc으로 제한하여 토큰 폭발 방지.
+    """
     import tiktoken
     enc = tiktoken.encoding_for_model(config.LLM_MODEL_NAME)
     result = []
     total_tokens = 0
     for doc in docs[:max_docs]:
-        doc_tokens = len(enc.encode(doc.page_content))
+        detail = doc.metadata.get("detail_description", "")
+        full_text = doc.page_content
+        if detail:
+            full_text += f"\n상세설명: {detail}"
+        # 카드당 토큰 제한 (page_content에 detail이 이미 포함된 경우도 방어)
+        full_text = _truncate_by_tokens(full_text, enc, max_tokens_per_doc)
+        doc_tokens = len(enc.encode(full_text))
         if total_tokens + doc_tokens > config.MAX_CONTEXT_TOKENS:
             break
-        result.append(doc.page_content)
+        result.append(full_text)
         total_tokens += doc_tokens
-    return "\n\n---\n\n".join(result)
+    # 최종 안전장치: 전체 컨텍스트도 토큰 제한
+    final = "\n\n---\n\n".join(result)
+    return _truncate_by_tokens(final, enc, config.MAX_CONTEXT_TOKENS)
 
 
 def extract_source_cards(docs) -> list[dict]:
@@ -138,6 +158,54 @@ def get_structured_recommendation(persona_text: str) -> dict:
             rec["card_type"] = src.get("card_type", "신용")
 
     return {"recommendations": recommendations, "source_cards": source_cards}
+
+
+def get_chat_stream(user_message: str, chat_history: list[dict]):
+    """대화형 스트리밍: 대화 히스토리 + RAG 검색 결과를 반영하여 스트리밍 응답 생성
+
+    Args:
+        user_message: 현재 사용자 메시지
+        chat_history: [{"role": "user"|"assistant", "content": "..."}, ...]
+
+    Returns:
+        (stream_generator, source_cards)
+    """
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+
+    retriever, _ = _load_retriever_and_docs()
+    docs = retriever.invoke(user_message)
+    context = format_docs(docs)
+    source_cards = extract_source_cards(docs)
+
+    # 메시지 구성: 시스템 → 히스토리(최근 6턴) → 현재 질문(카드 컨텍스트 포함)
+    messages = [SystemMessage(content=config.CHAT_SYSTEM_PROMPT)]
+
+    # 히스토리는 최근 6턴(12메시지)만, 각 메시지 500토큰 제한
+    import tiktoken
+    enc = tiktoken.encoding_for_model(config.LLM_MODEL_NAME)
+    for msg in chat_history[-12:]:
+        content = _truncate_by_tokens(msg["content"], enc, 500)
+        if msg["role"] == "user":
+            messages.append(HumanMessage(content=content))
+        else:
+            messages.append(AIMessage(content=content))
+
+    # 현재 질문에 검색된 카드 정보를 함께 전달
+    current_prompt = f"""[참고 카드 정보]
+{context}
+
+[사용자 질문]
+{user_message}"""
+    messages.append(HumanMessage(content=current_prompt))
+
+    llm = _get_llm(streaming=True)
+
+    def stream_generator():
+        for chunk in llm.stream(messages):
+            if chunk.content:
+                yield chunk.content
+
+    return stream_generator(), source_cards
 
 
 def get_base_response(persona_text: str) -> str:
