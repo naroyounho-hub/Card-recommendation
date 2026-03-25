@@ -118,6 +118,30 @@ def get_recommendation(persona_text: str) -> dict:
     return {"answer": answer, "source_cards": source_cards}
 
 
+def analyze_persona(persona_text: str) -> str:
+    """소비 패턴 분석: 중요도 순 정리 + 카드 검색 키워드 추출"""
+    prompt = ChatPromptTemplate.from_template(config.PERSONA_ANALYSIS_PROMPT)
+    llm = _get_llm()
+    chain = prompt | llm | StrOutputParser()
+    return chain.invoke({"persona": persona_text})
+
+
+def _extract_search_query(analysis: str) -> str:
+    """분석 결과에서 '카드 검색 키워드' 줄만 추출하여 retrieval 쿼리로 사용"""
+    for line in analysis.splitlines():
+        if line.startswith("**카드 검색 키워드**"):
+            # 다음 줄이 키워드
+            continue
+        if "**카드 검색 키워드**" in analysis:
+            idx = analysis.find("**카드 검색 키워드**")
+            rest = analysis[idx:].splitlines()
+            for l in rest[1:]:
+                l = l.strip()
+                if l:
+                    return l
+    return analysis  # 파싱 실패 시 전체 분석 결과 사용
+
+
 _FEMALE_KEYWORDS = {"여성", "여자", "여학생", "여배우"}
 _FOREIGN_KEYWORDS = {"외국인", "유학생", "중국", "일본", "미국", "베트남", "태국", "필리핀", "인도네시아", "몽골", "러시아", "프랑스", "독일", "영국", "캐나다", "호주"}
 
@@ -127,17 +151,29 @@ def _is_female_or_foreigner(persona_text: str) -> bool:
     return any(kw in persona_text for kw in _FEMALE_KEYWORDS | _FOREIGN_KEYWORDS)
 
 
-def get_structured_recommendation(persona_text: str) -> dict:
-    """구조화된 추천: JSON 형태로 카드별 추천 이유와 절약 금액 반환"""
+def get_structured_recommendation(persona_text: str, analysis: str = None) -> dict:
+    """구조화된 추천: JSON 형태로 카드별 추천 이유와 절약 금액 반환
+
+    Args:
+        persona_text: 원본 페르소나 텍스트
+        analysis: analyze_persona() 결과 (있으면 검색 쿼리 + 프롬프트 컨텍스트로 활용)
+    """
     retriever, _ = _load_retriever_and_docs()
 
-    docs = retriever.invoke(persona_text)
+    # 분석 결과가 있으면 키워드로 검색, 없으면 원본 텍스트로 검색
+    search_query = _extract_search_query(analysis) if analysis else persona_text
+    docs = retriever.invoke(search_query)
     context = format_docs(docs)
     source_cards = extract_source_cards(docs)
 
+    # 프롬프트에 원본 페르소나 + 분석 결과를 모두 전달
+    full_persona = persona_text
+    if analysis:
+        full_persona = f"{persona_text}\n\n[소비 패턴 분석 결과]\n{analysis}"
+
     llm = _get_llm()
     chain = STRUCTURED_PROMPT | llm | StrOutputParser()
-    raw = chain.invoke({"context": context, "persona": persona_text})
+    raw = chain.invoke({"context": context, "persona": full_persona})
 
     try:
         recommendations = json_module.loads(raw)

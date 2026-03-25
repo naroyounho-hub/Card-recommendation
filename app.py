@@ -1,6 +1,6 @@
 import html
 import streamlit as st
-from src.chain import get_structured_recommendation, get_chat_stream
+from src.chain import analyze_persona, get_structured_recommendation, get_chat_stream
 
 st.set_page_config(page_title="카드 추천 AI", page_icon="💳", layout="wide")
 
@@ -169,6 +169,21 @@ if "persona" not in st.session_state:
     st.session_state["persona"] = ""
 if "chat_messages" not in st.session_state:
     st.session_state["chat_messages"] = []
+if "analysis" not in st.session_state:
+    st.session_state["analysis"] = None
+
+# 선호 조건 선택지
+CARD_COMPANIES = [
+    "삼성카드", "신한카드", "현대카드", "KB국민카드", "롯데카드",
+    "하나카드", "우리카드", "NH농협카드", "IBK기업은행", "BC 바로카드",
+    "카카오페이", "카카오뱅크", "토스뱅크", "토스", "케이뱅크",
+    "SSGPAY. CARD", "우체국", "광주은행", "전북은행", "제주은행",
+]
+BENEFIT_CATEGORIES = [
+    "적립", "할인", "카페", "편의점", "대중교통", "주유", "쇼핑",
+    "온라인쇼핑", "배달앱", "통신", "영화", "공항라운지", "해외",
+    "간편결제", "디지털구독", "대형마트", "푸드", "생활", "프리미엄 서비스",
+]
 
 # 사이드바
 with st.sidebar:
@@ -192,10 +207,52 @@ with st.sidebar:
     )
 
     st.divider()
+    st.markdown("### 선호 조건 (선택)")
+
+    WEIGHT_OPTIONS = ["낮음", "보통", "높음", "필수"]
+
+    preferred_companies = st.multiselect(
+        "🏢 선호 카드사",
+        options=CARD_COMPANIES,
+        placeholder="카드사를 선택하세요 (복수 선택 가능)",
+    )
+    company_weights = {}
+    if preferred_companies:
+        st.markdown("<small style='color:#888'>카드사별 중요도</small>", unsafe_allow_html=True)
+        for company in preferred_companies:
+            col_name, col_slider = st.columns([2, 3])
+            with col_name:
+                st.markdown(f"<div style='padding-top:8px;font-size:0.85rem'>{company}</div>", unsafe_allow_html=True)
+            with col_slider:
+                company_weights[company] = st.select_slider(
+                    " ", options=WEIGHT_OPTIONS, value="보통",
+                    key=f"cw_{company}", label_visibility="collapsed"
+                )
+
+    preferred_benefits = st.multiselect(
+        "✨ 선호 혜택",
+        options=BENEFIT_CATEGORIES,
+        placeholder="원하는 혜택을 선택하세요 (복수 선택 가능)",
+    )
+    benefit_weights = {}
+    if preferred_benefits:
+        st.markdown("<small style='color:#888'>혜택별 중요도</small>", unsafe_allow_html=True)
+        for benefit in preferred_benefits:
+            col_name, col_slider = st.columns([2, 3])
+            with col_name:
+                st.markdown(f"<div style='padding-top:8px;font-size:0.85rem'>{benefit}</div>", unsafe_allow_html=True)
+            with col_slider:
+                benefit_weights[benefit] = st.select_slider(
+                    " ", options=WEIGHT_OPTIONS, value="보통",
+                    key=f"bw_{benefit}", label_visibility="collapsed"
+                )
+
+    st.divider()
     if st.button("🗑️ 대화 초기화", use_container_width=True):
         st.session_state["recommendation"] = None
         st.session_state["persona"] = ""
         st.session_state["chat_messages"] = []
+        st.session_state["analysis"] = None
         st.rerun()
 
 
@@ -256,10 +313,29 @@ if st.session_state["recommendation"] is None:
         if not persona_text.strip():
             st.warning("소비 패턴을 입력해주세요.")
         else:
-            with st.spinner("AI가 맞춤 카드를 분석하고 있습니다..."):
-                result = get_structured_recommendation(persona_text)
+            # 선호 조건 + 가중치를 페르소나 텍스트에 추가
+            enriched_persona = persona_text.strip()
+            if preferred_companies or preferred_benefits:
+                pref_lines = []
+                if preferred_companies:
+                    items = ", ".join(f"{c}({company_weights.get(c, '보통')})" for c in preferred_companies)
+                    pref_lines.append(f"선호 카드사: {items}")
+                if preferred_benefits:
+                    items = ", ".join(f"{b}({benefit_weights.get(b, '보통')})" for b in preferred_benefits)
+                    pref_lines.append(f"선호 혜택: {items}")
+                pref_lines.append("'필수' 조건은 반드시 반영하고, '높음'은 최대한, '보통'은 가능하면, '낮음'은 여유 있을 때 반영해주세요.")
+                enriched_persona += "\n\n[선호 조건]\n" + "\n".join(pref_lines)
+
+            # 1단계: 소비 패턴 분석
+            with st.spinner("🔍 소비 패턴을 분석하고 있습니다..."):
+                analysis = analyze_persona(enriched_persona)
+            st.session_state["analysis"] = analysis
+
+            # 2단계: 분석 기반 카드 검색 & 추천
+            with st.spinner("💳 맞춤 카드를 검색하고 있습니다..."):
+                result = get_structured_recommendation(enriched_persona, analysis=analysis)
             st.session_state["recommendation"] = result
-            st.session_state["persona"] = persona_text
+            st.session_state["persona"] = enriched_persona
             # 추천 결과를 대화 히스토리 초기값으로 저장
             rec_lines = []
             for r in result.get("recommendations", []):
@@ -275,6 +351,11 @@ if st.session_state["recommendation"] is None:
 # 2단계: 추천 결과 + 후속 채팅
 # ──────────────────────────────────────
 if st.session_state["recommendation"] is not None:
+    # 소비 패턴 분석 결과 표시
+    if st.session_state.get("analysis"):
+        with st.expander("📊 소비 패턴 분석 결과 보기", expanded=True):
+            st.markdown(st.session_state["analysis"])
+
     result = st.session_state["recommendation"]
     recommendations = result.get("recommendations", [])
 
