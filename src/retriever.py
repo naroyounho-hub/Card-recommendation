@@ -43,7 +43,7 @@ def get_multiquery_retriever(base_retriever, llm=None):
     if llm is None:
         llm = ChatOpenAI(
             model=config.LLM_MODEL_NAME,
-            temperature=0.3,
+            temperature=config.LLM_TEMPERATURE,
         )
     return MultiQueryRetriever.from_llm(
         retriever=base_retriever,

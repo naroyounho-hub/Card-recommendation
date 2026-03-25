@@ -1,13 +1,16 @@
 import json as json_module
+import re
+import tiktoken
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 import config
 from src.embedding import create_documents, get_embedding_model
 from src.vectorstore import load_vectorstore, build_and_save
-from src.retriever import get_advanced_retriever, get_base_retriever
+from src.retriever import get_advanced_retriever
 
 # config에서 프롬프트 템플릿 로드 (프롬프트 엔지니어링은 config.py에서)
 def _build_prompt(template_str: str) -> ChatPromptTemplate:
@@ -33,7 +36,6 @@ def format_docs(docs, max_docs: int = 15, max_tokens_per_doc: int = 3000) -> str
     검색은 benefits 기반이지만, LLM에는 metadata의 detail_description을 합쳐서 전달.
     카드당 전체 텍스트를 max_tokens_per_doc으로 제한하여 토큰 폭발 방지.
     """
-    import tiktoken
     enc = tiktoken.encoding_for_model(config.LLM_MODEL_NAME)
     result = []
     total_tokens = 0
@@ -80,15 +82,25 @@ def _get_llm(streaming: bool = False):
     )
 
 
+# 모듈 레벨 singleton 캐싱 — 매 요청마다 JSON 재로딩 방지
+_cached_retriever = None
+_cached_docs = None
+
+
 def _load_retriever_and_docs():
-    """retriever와 documents를 로드. 인덱스가 없으면 자동 빌드."""
+    """retriever와 documents를 로드. 인덱스가 없으면 자동 빌드. 결과는 캐싱."""
+    global _cached_retriever, _cached_docs
+    if _cached_retriever is not None:
+        return _cached_retriever, _cached_docs
     documents = create_documents()
     try:
         vectorstore = load_vectorstore()
     except Exception:
         vectorstore = build_and_save()
     retriever = get_advanced_retriever(vectorstore, documents)
-    return retriever, documents
+    _cached_retriever = retriever
+    _cached_docs = documents
+    return _cached_retriever, _cached_docs
 
 
 def get_recommendation(persona_text: str) -> dict:
@@ -106,22 +118,13 @@ def get_recommendation(persona_text: str) -> dict:
     return {"answer": answer, "source_cards": source_cards}
 
 
-def get_recommendation_stream(persona_text: str):
-    """스트리밍 버전: 토큰 단위로 yield + source_cards 반환"""
-    retriever, _ = _load_retriever_and_docs()
+_FEMALE_KEYWORDS = {"여성", "여자", "여학생", "여배우"}
+_FOREIGN_KEYWORDS = {"외국인", "유학생", "중국", "일본", "미국", "베트남", "태국", "필리핀", "인도네시아", "몽골", "러시아", "프랑스", "독일", "영국", "캐나다", "호주"}
 
-    docs = retriever.invoke(persona_text)
-    context = format_docs(docs)
-    source_cards = extract_source_cards(docs)
 
-    llm = _get_llm(streaming=True)
-    chain = RECOMMEND_PROMPT | llm | StrOutputParser()
-
-    def stream_generator():
-        for chunk in chain.stream({"context": context, "persona": persona_text}):
-            yield chunk
-
-    return stream_generator(), source_cards
+def _is_female_or_foreigner(persona_text: str) -> bool:
+    """페르소나 텍스트에서 여성 또는 외국인 여부 감지"""
+    return any(kw in persona_text for kw in _FEMALE_KEYWORDS | _FOREIGN_KEYWORDS)
 
 
 def get_structured_recommendation(persona_text: str) -> dict:
@@ -140,7 +143,6 @@ def get_structured_recommendation(persona_text: str) -> dict:
         recommendations = json_module.loads(raw)
     except json_module.JSONDecodeError:
         # JSON 파싱 실패 시 ```json ... ``` 블록 추출 시도
-        import re
         match = re.search(r'\[.*\]', raw, re.DOTALL)
         if match:
             recommendations = json_module.loads(match.group())
@@ -204,6 +206,36 @@ def get_structured_recommendation(persona_text: str) -> dict:
                         rec["card_url"] = sc.get("card_url", "")
                         break
 
+    # 여성/외국인에게 나라사랑카드 추천 금지: 해당 카드 제거 후 source_cards에서 대체
+    if _is_female_or_foreigner(persona_text):
+        filtered = []
+        for rec in recommendations:
+            if "나라사랑" in rec.get("card_name", ""):
+                rec_type = rec.get("card_type", "체크")
+                replaced = False
+                for sc in source_cards:
+                    if sc["card_name"] not in used_names and "나라사랑" not in sc["card_name"]:
+                        sc_type = sc.get("card_type", "")
+                        if ("체크" in rec_type) == ("체크" in sc_type):
+                            used_names.add(sc["card_name"])
+                            rec = {
+                                "card_name": sc["card_name"],
+                                "card_company": sc.get("card_company", ""),
+                                "card_type": rec_type,
+                                "reason": rec.get("reason", ""),
+                                "monthly_saving": rec.get("monthly_saving", ""),
+                                "benefits_summary": rec.get("benefits_summary", []),
+                                "image_url": sc.get("image_url", ""),
+                                "card_url": sc.get("card_url", ""),
+                            }
+                            replaced = True
+                            break
+                if not replaced:
+                    # 대체 카드가 없으면 그냥 제외
+                    continue
+            filtered.append(rec)
+        recommendations = filtered
+
     # 신용 3장 / 체크 3장 보장: 부족하면 상대쪽에서 재분류
     credit = [r for r in recommendations if r["card_type"] == "신용"]
     check = [r for r in recommendations if r["card_type"] == "체크"]
@@ -230,8 +262,6 @@ def get_chat_stream(user_message: str, chat_history: list[dict]):
     Returns:
         (stream_generator, source_cards)
     """
-    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-
     retriever, _ = _load_retriever_and_docs()
     docs = retriever.invoke(user_message)
     context = format_docs(docs)
@@ -241,7 +271,6 @@ def get_chat_stream(user_message: str, chat_history: list[dict]):
     messages = [SystemMessage(content=config.CHAT_SYSTEM_PROMPT)]
 
     # 히스토리는 최근 6턴(12메시지)만, 각 메시지 500토큰 제한
-    import tiktoken
     enc = tiktoken.encoding_for_model(config.LLM_MODEL_NAME)
     for msg in chat_history[-12:]:
         content = _truncate_by_tokens(msg["content"], enc, 500)

@@ -64,19 +64,11 @@ STRUCTURED_PROMPT_TEMPLATE = """{{system_prompt}}
 - **반드시 위 [참고할 카드 정보]에 있는 카드만 추천하세요.** 참고 카드 정보에 없는 카드는 절대 추천하지 마세요.
 - card_name은 참고 카드 정보에 있는 카드명을 정확히 그대로 사용하세요. 임의로 변경하거나 축약하지 마세요.
 - 6장 미만으로 응답하지 마세요.
+- 사용자가 여성이거나 외국인(유학생 포함)인 경우, 나라사랑카드(군인 전용 카드)는 절대 추천하지 마세요.
 
 반드시 아래 JSON 형식으로만 응답하세요. JSON 외의 텍스트는 절대 포함하지 마세요.
-JSON 배열은 정확히 6개의 객체를 포함해야 합니다.
-순서: 신용카드 3개를 먼저, 그 다음 체크카드 3개를 배치하세요.
-card_type 값은 반드시 "신용" 또는 "체크" 중 하나만 사용하세요:
-[
-  {{{{ "card_name": "신용카드1", "card_company": "카드사", "card_type": "신용", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}},
-  {{{{ "card_name": "신용카드2", "card_company": "카드사", "card_type": "신용", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}},
-  {{{{ "card_name": "신용카드3", "card_company": "카드사", "card_type": "신용", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}},
-  {{{{ "card_name": "체크카드1", "card_company": "카드사", "card_type": "체크", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}},
-  {{{{ "card_name": "체크카드2", "card_company": "카드사", "card_type": "체크", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}},
-  {{{{ "card_name": "체크카드3", "card_company": "카드사", "card_type": "체크", "reason": "추천 이유", "monthly_saving": "약 X원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}}
-]"""
+신용카드 3개를 먼저, 그 다음 체크카드 3개 순서로 총 6개 객체를 포함하는 JSON 배열:
+각 객체 형식: {{{{ "card_name": "카드명", "card_company": "카드사명", "card_type": "신용"|"체크", "reason": "이 사용자에게 추천하는 이유", "monthly_saving": "약 X만원", "benefits_summary": ["혜택1", "혜택2", "혜택3"] }}}}"""
 
 BASE_PROMPT_TEMPLATE = """{{system_prompt}}
 

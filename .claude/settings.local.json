@@ -5,7 +5,9 @@
       "Bash(python -c \":*)",
       "Bash(python3 -m json.tool)",
       "Bash(python3:*)",
-      "Bash(grep -n \"html\\\\|escape\" app.py src/*.py)"
+      "Bash(grep -n \"html\\\\|escape\" app.py src/*.py)",
+      "Bash(taskkill /F /IM streamlit.exe)",
+      "Bash(taskkill /F /IM python.exe)"
     ]
   }
 }
